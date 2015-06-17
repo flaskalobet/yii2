@@ -1,0 +1,21 @@
+#: zoom video 1.5 time and keep width/height => scale=1.5*iw:-1
+#: crop video with width/2 and height/2 from middle => crop=iw/2:ih/2
+#: draw a text on video => drawtext=fontsize=30:fontfile=/usr/share/fonts/gnu-free/FreeSerif.ttf:text='hell    o world':x=10:y=10:fontsize=24
+ffmpeg -i hungaryvsbrazil.mp4 -vf "scale=1.5*iw:-1,crop=iw/2:ih/2,drawtext=fontsize=30:fontfile=/usr/share/fonts/gnu-free/FreeSerif.ttf:text='hello world':x=10:y=10:fontsize=24" -strict -2 -y zoom.mp4
+
+#: add watermark
+#: to use the file:
+#:  syntax: bash split.sh start_time(00:00:12) end_time_in_second(250) film
+/usr/bin/ffmpeg -i "/opt/hadn/$1" -i /opt/hadn/watermark.png -filter_complex "overlay=main_w-overlay_w-20:main_h-overlay_h-2" -strict -2 "/opt/hadn/upload/$1"
+
+#: convert mp4 file into mpegts file
+#: convert_mp4_step1.sh
+#: to use the file: convert mp4 file to mpegts
+#:  syntax: bash convert_mp4_step1 file_mp4_convert($1) file_name(mpegts)
+ffmpeg -i $1 -c copy -bsf:v h264_mp4toannexb -f mpegts $2.ts
+
+#: convert_mp4_step2.sh
+#: to use the file:
+#:  syntax: bash convert_mp4_step2.sh file_name_01 file_name_02
+ffmpeg -i "concat:/opt/redmine-3.0.1/public/hadn/$1|/opt/redmine-3.0.1/public/hadn/$2" -c copy -bsf:a aac_adtstoasc output.mp
+
