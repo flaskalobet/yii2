@@ -9,6 +9,9 @@ use yii\web\IdentityInterface;
 
 use yii\db\Expression;
 
+// Add relationship to Role table
+use backend\models\Role;
+
 /**
  * User model
  *
@@ -208,5 +211,30 @@ class User extends ActiveRecord implements IdentityInterface
     public function removePasswordResetToken()
     {
         $this->password_reset_token = null;
+    }
+
+    /**
+     * get role relationship
+     */
+    public function getRole()
+    {
+        return $this->hasOne(Role::className (), ['role_value' => 'role_id']);
+    }
+
+    /**
+     * get role name
+     */
+    public function getRoleName()
+    {
+        return $this->role ? $this->role->role_name : '- no role -';
+    }
+
+    /**
+     * get list of roles for dropdown
+     */
+    public static function getRoleList()
+    {
+        $droptions = Role::find()->asArray()->all();
+        return Arrayhelper::map($droptions, 'role_value', 'role_name');
     }
 }
