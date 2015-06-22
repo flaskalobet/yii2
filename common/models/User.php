@@ -16,7 +16,9 @@ use yii\web\IdentityInterface;
  * @property string $password_reset_token
  * @property string $email
  * @property string $auth_key
- * @property integer $status
+ * @property integer $status_id
+ * @property integer $role_id
+ * @proprty integer $user_type_id
  * @property integer $created_at
  * @property integer $updated_at
  * @property string $password write-only password
@@ -39,8 +41,18 @@ class User extends ActiveRecord implements IdentityInterface
      */
     public function behaviors()
     {
+        //return [
+        //    TimestampBehavior::className(),
+        //];
         return [
-            TimestampBehavior::className(),
+            'timestamp' => [
+                'class' => 'yii\behaviors\TimestampBehavior',
+                'attributes' => [
+                    ActiveRecord::EVENT_BEFORE_INSERT => ['created_at', 'updated_at'],
+                    ActiveRecord::EVENT_BEFORE_UPDATE => ['updated_at'],
+                ],
+                'value' => new Expression('NOW()'),
+            ],
         ];
     }
 
@@ -52,6 +64,16 @@ class User extends ActiveRecord implements IdentityInterface
         return [
             ['status', 'default', 'value' => self::STATUS_ACTIVE],
             ['status', 'in', 'range' => [self::STATUS_ACTIVE, self::STATUS_DELETED]],
+            ['role_id', 'default', 'value' => 10],
+            ['user_type_id', 'default','value' => 10],
+            ['username', 'filter','filter' => 'trim'],
+            ['username', 'required'],
+            ['username', 'unique'],
+            ['username', 'string', 'min' => 2, 'max' => 255],
+            ['email', 'filter', 'filter' => 'trim'],
+            ['email', 'required'],
+            ['email', 'email'],
+            ['email', 'unique'],
         ];
     }
 
@@ -79,7 +101,7 @@ class User extends ActiveRecord implements IdentityInterface
      */
     public static function findByUsername($username)
     {
-        return static::findOne(['username' => $username, 'status' => self::STATUS_ACTIVE]);
+        return static::findOne(['username' => $username, 'status_id' => self::STATUS_ACTIVE]);
     }
 
     /**
@@ -96,7 +118,7 @@ class User extends ActiveRecord implements IdentityInterface
 
         return static::findOne([
             'password_reset_token' => $token,
-            'status' => self::STATUS_ACTIVE,
+            'status_id' => self::STATUS_ACTIVE,
         ]);
     }
 
