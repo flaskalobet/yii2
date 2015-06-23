@@ -13,6 +13,8 @@ use yii\helpers\ArrayHelper;
 // Add relationship to Role model
 use backend\models\Role;
 
+// Add relationship to Status model
+use backend\models\Status;
 /**
  * User model
  *
@@ -237,5 +239,30 @@ class User extends ActiveRecord implements IdentityInterface
     {
         $droptions = Role::find()->asArray()->all();
         return Arrayhelper::map($droptions, 'role_value', 'role_name');
+    }
+
+    /**
+     * get status relationship
+     */
+    public function getStatus()
+    {
+        return $this->hasOne(Status::className(), ['status_value' => 'status_id']);
+    }
+
+    /**
+     * get status name
+     */
+    public function getStatusName()
+    {
+        return $this->status ? $this->status->status_name : '- no status -';
+    }
+
+    /**
+     * get list of statuses for dropdown
+     */
+    public static function getStatusList()
+    {
+        $droptions = Status::find()->asArray()->all();
+        return Arrayhelper::map($droptions, 'status_value', 'status_name');
     }
 }
