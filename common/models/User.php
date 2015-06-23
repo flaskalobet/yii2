@@ -15,6 +15,10 @@ use backend\models\Role;
 
 // Add relationship to Status model
 use backend\models\Status;
+
+// Add relationship to Status model
+use backend\models\UserType;
+
 /**
  * User model
  *
@@ -265,4 +269,38 @@ class User extends ActiveRecord implements IdentityInterface
         $droptions = Status::find()->asArray()->all();
         return Arrayhelper::map($droptions, 'status_value', 'status_name');
     }
+
+    /**
+     * get UserType relationship
+     */
+    public function getUserType()
+    {
+        return $this->hasOne(UserType::className(), ['user_type_value' => 'user_type_id']);
+    }
+
+    /**
+     * get usertype name
+     */
+    public function getUserTypeName()
+    {
+        return $this->userType ? $this->userType->user_type_name : '- no user type -';
+    }
+
+    /**
+     * get list of UserTypes for dropdown
+     */
+    public static function getUserTypeList()
+    {
+        $droptions = UserType::find()->asArray()->all();
+        return Arrayhelper::map($droptions, 'user_type_value', 'user_type_name');
+    }
+
+    /**
+     * get usertype id
+     */
+    public static function getUserTypeId()
+    {
+        return $this->userType ? $this->userType->id : 'none';
+    }
 }
+
