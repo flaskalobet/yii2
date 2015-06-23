@@ -47,6 +47,10 @@ class Role extends \yii\db\ActiveRecord
             'role_value' => 'Role Value',
         ];
     }
+
+    /**
+     * get relationship from User model
+     */
     public function getUsers()
     {
         return $this -> hasMany(User::className(), ['role_id' => 'role_value']);

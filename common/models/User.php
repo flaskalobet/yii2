@@ -8,8 +8,9 @@ use yii\db\ActiveRecord;
 use yii\web\IdentityInterface;
 
 use yii\db\Expression;
+use yii\helpers\ArrayHelper;
 
-// Add relationship to Role table
+// Add relationship to Role model
 use backend\models\Role;
 
 /**
