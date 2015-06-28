@@ -1,0 +1,165 @@
+#!/usr/bin/python2
+# -*- coding: utf-8 -*-
+
+from bs4 import BeautifulSoup
+from subprocess import Popen, PIPE
+from youtube_dl import YoutubeDL
+import urllib2, shlex, os, wget
+import sqlite3 as lite
+import sys
+
+con = lite.connect('/opt/hungdq11/clipvn/crawler.db')
+
+cur = con.cursor()
+
+def db_insert(title,link):
+    cur.execute("INSERT INTO clipvn (title,link,lastupdate) VALUES(\"%s\",\"%s\",datetime(CURRENT_TIMESTAMP, 'localtime'));" %(title,link))
+
+def db_commit():
+    con.commit()
+
+def db_close():
+    con.close()
+
+def db_check(link):
+    cur.execute("SELECT id from clipvn where link='%s'" %link)
+    data = cur.fetchone()
+    if data:
+        return 1
+    else:
+        return 0
+
+def db_update_time(link):
+    cur.execute("UPDATE clipvn SET lastupdate = datetime(CURRENT_TIMESTAMP, 'localtime') WHERE link = '%s'" %link)
+
+def find_film(link):
+    p1 = Popen("/usr/bin/curl -s -b /opt/hungdq11/clipvn/clipvn.txt %s | grep -Eo 'http://[^ ]*?mp4'" %link, stdout=PIPE, shell=True)
+
+    res = p1.communicate()[0]
+
+    links = res.split("'")
+
+    for linkfilm in links:
+        if linkfilm.startswith("http://") and linkfilm.endswith(".mp4"):
+            #linkfilms = linkfilm.encode('utf-8').replace("''","'").replace('"','\'')
+            return linkfilm
+            break
+    return 0
+
+def get_desc(link):
+    page = urllib2.urlopen(link)
+    soup = BeautifulSoup(page.read())
+    crawl = soup.find("div",{"class":"desc"}).find("div",{"class":"content"})
+    return crawl.string.encode('utf-8').replace("''","'").replace('"','\'')
+
+def get_keyword(link):
+    keyw = "nettv"
+    page = urllib2.urlopen(link)
+    soup = BeautifulSoup(page.read())
+    crawls = soup.find("div",{"class":"info clearfix"}).find("p",{"class":"clearfix"}).find_all('a')
+    for crawl in crawls:
+        key = crawl.string.encode('utf-8').replace("''","'").replace('"','\'')
+        if len(key) < 20:
+            keyw+= ", " + key
+    return keyw
+
+def download_film(link):
+    url = link
+    file_name = url.split('/')[-1]
+    u = urllib2.urlopen(url)
+    f = open(file_name, 'wb')
+    meta = u.info()
+    file_size = int(meta.getheaders("Content-Length")[0])
+    print "Downloading: %s Bytes: %s" % (file_name, file_size)
+    os.system('clear')
+    file_size_dl = 0
+    block_sz = 8192
+    while True:
+        buffer = u.read(block_sz)
+        if not buffer:
+            break
+
+        file_size_dl += len(buffer)
+        f.write(buffer)
+        status = r"%10d  [%3.2f%%]" % (file_size_dl, file_size_dl * 100. / file_size)
+        status = status + chr(8)*(len(status)+1)
+        print status,
+
+    f.close()
+
+def upload_youtube(link,title,desc,keyword):
+    os.chdir('/opt/hungdq11/clipvn/')
+    wget.download(link)
+    file_mp4 = link.split("/")[-1]
+    cmd = '/opt/py27/bin/python /home/hungdq11/dl/youtube-upload/upload_video.py --file "%s" --title "%s" --description "%s" --keywords "%s" --category=24' % (file_mp4, title, desc, keyword)
+    #cmd = shlex.split(cmd.encode('ascii'))
+    #cmd = shlex.split(cmd.encode('utf8'))
+    cmd = shlex.split(cmd)
+    #: upload video to Youtube
+    try:
+        up = Popen(cmd, stdout=PIPE)
+        print up.communicate()
+    #: remove file which uploaded to youtube
+        os.remove(file_mp4)
+
+    except Exception, e:
+            print str(e)
+            pass
+
+
+url = urllib2.Request('http://clip.vn', headers={ 'User-Agent': 'Mozilla/5.0 (X11; Linux i686; rv:33.0) Gecko/20100101 Firefox/33.0' })
+#html = urllib2.urlopen(req).read()
+
+#url= 'http://clip.vn'
+page = urllib2.urlopen(url)
+soup = BeautifulSoup(page.read())
+
+# crawling hot content
+
+hots = soup.find("div",{"class":"box box-focus"}).find_all("a")
+
+for hot in hots:
+    if not hot.get('data-slide'):
+        if not db_check(hot.get('href')):
+            titles = hot.get('title').encode('utf-8').replace("''","'").replace('"','\'')
+            try:
+                desc = get_desc(hot.get('href'))
+            except:
+                desc = titles
+            keyword = get_keyword(hot.get('href'))
+            link_film = find_film(hot.get('href'))
+            if link_film:
+                db_insert(titles,hot.get('href'))
+                print titles,link_film
+                upload_youtube(link_film,titles,desc,keyword)
+        else:
+            db_update_time(hot.get('href'))
+
+
+# crawling content
+
+crawls = soup.find_all("div",{"class": "box box-specialized-page clearfix"})
+
+for crawl in crawls:
+    for craw in crawl.find_all("a",{"class": "item"}):
+        if not db_check(craw.get('href')):
+            try:
+                titles = craw.h4.string.encode('utf-8').replace("''","'").replace('"','\'')
+                try:
+                    desc = get_desc(craw.get('href'))
+                except:
+                    desc = titles
+                keyword = get_keyword(craw.get('href'))
+                link_film = find_film(craw.get('href'))
+                if link_film:
+                    db_insert(craw.h4.string,craw.get('href'))
+                    print titles, link_film
+
+                    upload_youtube(link_film,titles,desc,keyword)
+            except:
+                pass
+        else:
+            db_update_time(craw.get('href'))
+        #print find_film(hot.get('href'))
+db_commit()
+db_close()
